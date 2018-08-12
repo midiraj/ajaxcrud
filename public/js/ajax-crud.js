@@ -1,133 +1,111 @@
-var page = 1;
-var current_page = 1;
-var total_page = 0;
-var is_ajax_fire = 0;
 
-manageData();
+$(document).ready(function($) {
 
-
-/* manage data list */
-function manageData() {
-    $.ajax({
-        dataType: 'json',
-        url: url,
-        data: {page:page}
-    }).done(function(data){
-
-      total_page = data.last_page;
-      current_page = data.current_page;
-
-      $('#pagination').twbsPagination({
-          totalPages: total_page,
-          visiblePages: current_page,
-          onPageClick: function (event, pageL) {
-            page = pageL;
-                if(is_ajax_fire != 0){
-              getPageData();
-                }
-          }
-      });
-
-
-      manageRow(data.data);
-        is_ajax_fire = 1;
-    });
-}
-
-// ajax setup
-$.ajaxSetup({
-    headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        }
-});
-
-
-/* Get Page Data*/
-function getPageData() {
-  $.ajax({
-      dataType: 'json',
-      url: url,
-      data: {page:page}
-  }).done(function(data){
-    // console.log(page);
-    console.log(data);
-    manageRow(data.data);
+  var is_ajax_fire = 0;
+  if (is_ajax_fire == 0) {
+    getData();
+  };
+  $.ajaxSetup({
+    headers:{
+      'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') 
+    }
   });
-}
 
 
-/* Add new Item table row */
-function manageRow(data) {
-  var rows = '';
-  $.each( data, function( key, value ) {
+  function manageRow(data){
+    var rows = '';
+    $.each(data, function(key, value) {
       rows = rows + '<tr>';
       rows = rows + '<td>'+value.title+'</td>';
       rows = rows + '<td>'+value.description+'</td>';
-      rows = rows + '<td data-id="'+value.id+'">';
-      rows = rows + '<button data-toggle="modal" data-target="#edit-item" class="btn btn-primary edit-item">Edit</button> ';
-      rows = rows + '<button class="btn btn-danger remove-item">Delete</button>';
+      rows = rows + '<td data-id = "'+value.id+'">';
+      rows = rows + '<button data-toggle="modal" data-target="#edit-item" class="btn btn-primary edit-item">Edit</button>'; 
+      rows = rows + '<button class="btn btn-danger remove-item">Delete</button>'; 
       rows = rows + '</td>';
       rows = rows + '</tr>';
-  });
-  // $("tbody").innerHtml(rows);
-  $("tbody").html(rows);
-}
-
-
-/* Create new Item */
-$(".crud-submit").click(function(e){
-    e.preventDefault();
-    var form_action = $("#create-item").find("form").attr("action");
-    var title = $("#create-item").find("input[name='title']").val();
-
- 
-    var description = $("#create-item").find("textarea[name='description']").val();
-
-
-    $.ajax({
-        dataType: 'json',
-        type:'POST',
-        url: form_action,
-        data:{title:title, description:description}
-    }).done(function(data){
-        // console.log(data);
-        getPageData();
-        $(".title").val('');
-        $(".description").val('');
-        $(".modal").modal('hide');
-        toastr.success('Item Created Successfully.', 'Success Alert', {timeOut: 5000});
     });
-});
 
+    $("tbody").html(rows);
 
-/* Remove Item */
-$("body").on("click",".remove-item",function(){
-    var id = $(this).parent("td").data('id');
+  };
+
+  // End Manage All Data
+
+// Remove Task 
+
+  $("body").on('click', '.remove-item', function() {
+    var id = $(this).parent("td").data("id");
     var c_obj = $(this).parents("tr");
+
+    $.ajax({
+      url: url + '/' + id,
+      type: 'delete',
+      dataType: 'json',      
+    }).done(function(data) {
+      c_obj.remove();
+      toastr.success('Item Deleted Successfully.', 'Success Alert', {timeOut: 5000});
+      manageRow(data);
+    });
+    
+
+  });
+
+//  End Remove Tasks
+
+  function getData(){
     $.ajax({
         dataType: 'json',
-        type:'delete',
-        url: url + '/' + id,
-    }).done(function(data){
-        c_obj.remove();
-        toastr.success('Item Deleted Successfully.', 'Success Alert', {timeOut: 5000});
-        getPageData();
+        type:'GET',
+        url: url,
+      }).done(function(data){
+        // console.log(data);
+        is_ajax_fire += 1; 
+        manageRow(data);
+    });  
+    
+  };
+  
+
+
+  // Add New Task  
+  $(".crud-submit").click(function(e) {
+    e.preventDefault();
+
+  var action = $("#create-item").find('form').attr('action');
+  var title = $("#create-item").find("input[name='title']").val();
+  var description = $("#create-item").find("textarea[name='description']").val();
+
+  
+  $.ajax({
+    url: action,
+    type: 'POST',
+    dataType: 'json',
+    data: {title: title, description:description}
+  }).done(function(data) {
+    $(".title").val('');
+    $(".description").val('');
+    $(".modal").modal('hide');
+    manageRow(data);
+    // console.log(data);
+    
+    toastr.success('Task Created Successfully.', 'Success Alert', {timeOut: 4000});
+
     });
-});
+  });
+
+  //End Add New Task
 
 
-/* Edit Item */
-$("body").on("click",".edit-item",function(){
-    var id = $(this).parent("td").data('id');
-    var title = $(this).parent("td").prev("td").prev("td").text();
-    var description = $(this).parent("td").prev("td").text();
+  // Edit Item Start
+    $('body').on('click', '.edit-item', function() {
+      var id = $(this).parent("td").data("id");
+      var title = $(this).parent("td").prev("td").prev("td").text();
+      var description = $(this).parent("td").prev("td").text();
 
- 
-    $("#edit-item").find("input[name='title']").val(title);
-    $("#edit-item").find("textarea[name='description']").val(description);
-    $("#edit-item").find("form").attr("action",url + '/' + id);
-});
-
+      $("#edit-item").find("input[name = 'title']").val(title);
+      $("#edit-item").find("textarea[name = 'description']").val(description);
+      $("#edit-item").find('form').attr("action", url + '/' + id);
+    });
 
 /* Updated new Item */
 $(".crud-submit-edit").click(function(e){
@@ -143,8 +121,32 @@ $(".crud-submit-edit").click(function(e){
         url: form_action,
         data:{title:title, description:description}
     }).done(function(data){
-        getPageData();
+        manageRow(data);
         $(".modal").modal('hide');
         toastr.success('Item Updated Successfully.', 'Success Alert', {timeOut: 5000});
     });
+});
+  
+    // Update New Item
+
+    $("#crud-submit-edit").click(function(e) {
+      e.preventDefault();
+      var action = $("#edit-item").find("form").attr("action");
+      var title = $("#edit-item").find("input[name = 'title']").val();
+      var description = $("#edit-item").find("textarea[name='description']").val();
+
+      $.ajax({
+        dataType: 'json',
+        type: 'PUT',
+        url: action,
+        data: {title: title, description: description},
+      }).done(function(data) {
+        manageRow(data);
+        $(".modal").modal("hide");
+        toastr.success("Task Updated Successfully.", 'Success Alert', {timeOut: 5000});
+      });
+
+    });
+
+
 });
